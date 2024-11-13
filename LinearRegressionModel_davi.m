@@ -1,6 +1,6 @@
 restart_system();
 
-data = read_csv('data_200p.csv');
+data = read_csv('data_4050.csv');
 [predictors, targets] = load_array(data);
 
 for column = ["q1", "q2", "q3", "r0"]
@@ -33,17 +33,21 @@ r  = ones(length(t),1);
 for i = 1:size(predictors.R_)
     [sys, A, B, C, D] = nominal_system(predictors, i);
 
-    % Q(1,1) = predictors.q1(i);
-    % Q(2,2) = predictors.q2(i);
-    % Q(3,3) = predictors.q3(i);
-    % R0     = predictors.r0(i);
+    % os valores de Q e R devem ser positivos
+    Q(1,1) = abs(predictors.q1(i));
+    Q(2,2) = abs(predictors.q2(i));
+    Q(3,3) = abs(predictors.q3(i));
+    R0 = abs(predictors.r0(i));
+    % disp("-----------------------<<<<<");
+    % disp(Q);
+
     % 
-    % [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
-    % [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
-    % [penalty] = penalty_control(u, predictors.D_(i));
-    % [a, b, c, d] = step_info(sys_mf);
-    % [J] = cost_calculation(a, b, c, d, penalty);
-    % disp(J);
+    [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
+    [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
+    [penalty] = penalty_control(u, predictors.D_(i));
+    [a, b, c, d] = step_info(sys_mf);
+    [J] = cost_calculation(a, b, c, d, penalty);
+    disp(J);
 end
 
 
