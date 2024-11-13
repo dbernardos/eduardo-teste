@@ -1,9 +1,7 @@
 restart_system();
 
-data = read_csv('data_4050.csv');
+data = read_csv('data_200p.csv');
 [predictors, targets] = load_array(data);
-
-head(targets);
 
 for column = ["q1", "q2", "q3", "r0"]
     model = fitlm(predictors,targets.(column));
@@ -13,21 +11,43 @@ for column = ["q1", "q2", "q3", "r0"]
 
     disp("> COEFFICIENTS: ");
     disp(model.Coefficients.Estimate);               % Coeficientes [intercepto, b1, b2]
-    pred_values = predict(model, predictors);           % Predições
+    pred_values = predict(model, predictors);        % Predições
     
     disp("> PREDICTED VALUES: ");
     head(pred_values);
-    predictors.(column) = pred_values;                  % Alimentar independentes com a predição ou com a fonte
+    predictors.(column) = pred_values;                % Alimentar independentes com a predição ou com a fonte
 
     disp("> ANOVA: ");
-    anova(model,'summary')
+    anova(model,'summary');
 end
 
-head(predictors);
+% Ackermann's gains
+Knom  = [-0.0013 , 0.0286];
+Kinom = 0.3982;
 
-%plot(mdl)
+% simulation vectors
+dt = 1e-6;
+t  = 0:dt:0.1;
+r  = ones(length(t),1);
 
-% DEFINIÇÃO DE FUNÇÕES
+for i = 1:size(predictors.R_)
+    [sys, A, B, C, D] = nominal_system(predictors, i);
+
+    % Q(1,1) = predictors.q1(i);
+    % Q(2,2) = predictors.q2(i);
+    % Q(3,3) = predictors.q3(i);
+    % R0     = predictors.r0(i);
+    % 
+    % [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
+    % [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
+    % [penalty] = penalty_control(u, predictors.D_(i));
+    % [a, b, c, d] = step_info(sys_mf);
+    % [J] = cost_calculation(a, b, c, d, penalty);
+    % disp(J);
+end
+
+
+% FUNCTIONS
 % ----------------------------------------------------------- %
 function restart_system()
     clear
@@ -35,43 +55,41 @@ function restart_system()
     clc
 end
 
-% Função para importar arquivos csv
+% import csv file
 function data = read_csv(file)
+    disp("> reading file...");
     data = readtable(file);
     head(data);
 end
 
-% Função para carregar vetores com os dados de entrada
+% load input data
 function [predictors, targets] = load_array(data)
+    disp("> loading data...");
     predictors = data(:, {'R_', 'L_', 'C_', 'D_', 'Vi', 'J'});
     targets = data(:, {'q1', 'q2', 'q3', 'r0'});
 end
 
 % nominal system
-function sys = nominal_system(data)
-    A = [-1/(data.R_*data.C_) , (1-data.D_)/data.C_ ; -(1-data.D_)/data.L_ , 0];
-    B = [-data.Vi/((1-data.D_)^2*data.R_*data.C_) ; data.Vi/((1-D_)*data.L_)];
-    C = [data.iL*(1-data.D_) , data.Vo*(1-data.D_)];
-    D = -data.Vo*data.iL;
+function [sys, A, B, C, D] = nominal_system(data, i)
+    iL = 6;
+    Vo = 40;
+
+    A = [-1/(data.R_(i)*data.C_(i)) , (1-data.D_(i))/data.C_(i) ; -(1-data.D_(i))/data.L_(i) , 0];
+    B = [-data.Vi(i)/((1-data.D_(i))^2*data.R_(i)*data.C_(i)) ; data.Vi(i)/((1-data.D_(i))*data.L_(i))];
+    C = [iL*(1-data.D_(i)) , Vo*(1-data.D_(i))];
+    D = -Vo*iL;
     sys = ss(A,B,C,D);
 end
 
-% Ackermann's gains
-function [knom, kinom] = ackermanns_gains()
-    Knom  = [-0.0013 , 0.0286];
-    Kinom = 0.3982;
-end
-
-
 % controller gain calculation
-function [Ks, Ss, Ps, K, Ki] = controller_gain_calculation(sys, Q, R0)
-    [Ks,Ss,Ps] = lqi(sys,Q,R0);
+function [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0) 
+    [Ks,Ss,Ps] = lqi(sys,Q,R0);      % ?? ONDE FOI USADO O Ss E O Ps ??
     K  = Ks(1:2);
     Ki = -Ks(3);
 end
 
 % closed-loop system
-function [u, sys_mf] = closedLoop_system()
+function [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t)
     Aa = [A-B*K , B*Ki ; -(C-D*K) , -D*Ki];
     Ba = [0 ; 0 ; 1];
     Ca = [C-D*K , D*Ki];
@@ -90,7 +108,7 @@ function [penalty] = penalty_control(u, D_)
 end
 
 % step info
-function [Z, a, b, c, d] = step_info(sys_mf)
+function [a, b, c, d] = step_info(sys_mf)
     Z = stepinfo(sys_mf);
     a = Z.RiseTime;
     b = Z.SettlingTime;
