@@ -1,6 +1,6 @@
 restart_system();
 
-data = read_csv('data_4050.csv');
+data = read_csv('data_200p.csv');
 [predictors, targets] = load_array(data);
 
 for column = ["q1", "q2", "q3", "r0"]
@@ -47,7 +47,11 @@ for i = 1:size(predictors.R_)
     [penalty] = penalty_control(u, predictors.D_(i));
     [a, b, c, d] = step_info(sys_mf);
     [J] = cost_calculation(a, b, c, d, penalty);
-    disp(J);
+    % disp(J);
+    plot_chart(abs(predictors.q1(i)), abs(predictors.q2(i)), abs(predictors.q3(i)), abs(predictors.r0(i)), sys, A, B, C, D, Knom, Kinom, r, t)
+    if i == 5
+        break;
+    end
 end
 
 
@@ -132,4 +136,45 @@ function [J] = cost_calculation(a, b, c, d, penalty)
     pond4 = 0.1;       % undershoot
 
     J = pond1*a + pond2*b + pond3*c + pond4*d + penalty;
+end
+
+% system comparison with best and nominal values
+function plot_chart(q1, q2, q3, r0, sys, A, B, C, D, Knom, Kinom, r, t)
+    % % With PSO's best values
+    Qbest = diag([q1,q2,q3]);
+
+    [Ks1,Ss1,Ps1] = lqi(sys,Qbest,r0);
+    K1  = Ks1(1:2);
+    Ki1 = -Ks1(3);
+    
+    Aa1 = [A-B*K1 , B*Ki1 ; -(C-D*K1) , -D*Ki1];    % closed-loop A
+    Ba1 = [0 ; 0 ; 1];                              % closed-loop B
+    Ca1 = [C-D*K1 , D*Ki1];                         % closed-loop C
+    
+    sysbest = ss(Aa1,Ba1,Ca1,0);% With nominal Ackermann's values
+    Aa2 = [A-B*Knom , B*Kinom ; -(C-D*Knom) , -D*Kinom];    % closed-loop A
+    Ba2 = [0 ; 0 ; 1];                                      % closed-loop B
+    Ca2 = [C-D*Knom , D*Kinom];                             % closed-loop C
+    
+    sysnom  = ss(Aa2,Ba2,Ca2,0);
+
+    % Time simulation of both PSO and Ackermann
+    [Y1,~,X1] = lsim(sysbest,3*r,t);
+    u1 = [-K1 , Ki1]*X1';                 % control signal
+ 
+    [Y2,~,X2] = lsim(sysnom,3*r,t);
+    u2 = [-Knom , Kinom]*X2';             % control signal
+
+    % Plot
+    figure
+    subplot(211)
+    plot(t,Y1,t,Y2)
+    grid
+    legend('LR','nominal')
+    ylabel('Potência')
+    subplot(212)
+    plot(t,u1,t,u2)
+    grid
+    ylabel('Sinal de controle')
+    xlabel('Tempo (s)')
 end
