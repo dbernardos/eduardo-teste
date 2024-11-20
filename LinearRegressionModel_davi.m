@@ -1,6 +1,8 @@
 restart_system();
 principal(true, 2);
 
+% MAIN FUNCTION
+% ----------------------------------------------------------- %
 function principal(flag, rep)
     data = read_csv('data_4050.csv');
     [predictors, targets] = load_array(data); % ?? changed predictors to data
@@ -48,7 +50,7 @@ function principal(flag, rep)
         [a, b, c, d] = step_info(sys_mf);
         [J] = cost_calculation(a, b, c, d, penalty);
         % disp(J);
-        if flag == true && i == rep
+        if flag == true && i <= rep
             plot_chart(new.q1(i), new.q2(i), new.q3(i), new.r0(i), sys, A, B, C, D, Knom, Kinom, r, t)
         end
     end
