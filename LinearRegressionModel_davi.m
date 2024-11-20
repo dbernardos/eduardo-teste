@@ -1,8 +1,17 @@
 restart_system();
 
-data = read_csv('data_200p.csv');
-[predictors, targets] = load_array(data);
+data = read_csv('data_4050.csv');
+[predictors, targets] = load_array(data); %mudei de predictors para data
 
+% idx = ~isnan(predictors.J) & ~isnan(predictors.R_);
+% x_clean = predictors.J(idx);
+% y_clean = predictors.R_(idx);
+% 
+% corr_matrix = corr(x_clean, y_clean);
+% disp("CORRELACAO: ");
+% disp(corr_matrix);
+
+%for column = ["q1", "q2"]
 for column = ["q1", "q2", "q3", "r0"]
     model = fitlm(predictors,targets.(column));
     
@@ -14,8 +23,9 @@ for column = ["q1", "q2", "q3", "r0"]
     pred_values = predict(model, predictors);        % Predições
     
     disp("> PREDICTED VALUES: ");
-    head(pred_values);
-    predictors.(column) = pred_values;                % Alimentar independentes com a predição ou com a fonte
+    head(max(0.001, pred_values));
+    % predictors.(column) = max(0.001, pred_values);                % Alimentar independentes com a predição ou com a fonte
+    new.(column) = max(0.001, pred_values);                % Alimentar independentes com a predição ou com a fonte
 
     disp("> ANOVA: ");
     anova(model,'summary');
@@ -30,28 +40,28 @@ dt = 1e-6;
 t  = 0:dt:0.1;
 r  = ones(length(t),1);
 
-for i = 1:size(predictors.R_)
-    [sys, A, B, C, D] = nominal_system(predictors, i);
+for i = 1:size(predictors.J)
+    [sys, A, B, C, D] = nominal_system(data, i);
 
     % os valores de Q e R devem ser positivos
-    Q(1,1) = abs(predictors.q1(i));
-    Q(2,2) = abs(predictors.q2(i));
-    Q(3,3) = abs(predictors.q3(i));
-    R0 = abs(predictors.r0(i));
+    Q(1,1) = new.q1(i);
+    Q(2,2) = new.q2(i);
+    Q(3,3) = new.q3(i);
+    R0 = new.r0(i);
     % disp("-----------------------<<<<<");
     % disp(Q);
 
     % 
     [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
     [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
-    [penalty] = penalty_control(u, predictors.D_(i));
+    [penalty] = penalty_control(u, data.D_(i)); %mudei de predictors para data
     [a, b, c, d] = step_info(sys_mf);
     [J] = cost_calculation(a, b, c, d, penalty);
     % disp(J);
-    plot_chart(abs(predictors.q1(i)), abs(predictors.q2(i)), abs(predictors.q3(i)), abs(predictors.r0(i)), sys, A, B, C, D, Knom, Kinom, r, t)
-    if i == 5
-        break;
-    end
+    % plot_chart(predictors.q1(i), predictors.q2(i), predictors.q3(i), predictors.r0(i), sys, A, B, C, D, Knom, Kinom, r, t)
+    % if i == 10
+    %     break;
+    % end
 end
 
 
@@ -73,7 +83,8 @@ end
 % load input data
 function [predictors, targets] = load_array(data)
     disp("> loading data...");
-    predictors = data(:, {'R_', 'L_', 'C_', 'D_', 'Vi', 'J'});
+    % predictors = data(:, {'R_', 'L_', 'C_', 'D_', 'Vi', 'J'});
+    predictors = data(:, {'J'});
     targets = data(:, {'q1', 'q2', 'q3', 'r0'});
 end
 
