@@ -1,67 +1,57 @@
 restart_system();
+principal(true, 2);
 
-data = read_csv('data_4050.csv');
-[predictors, targets] = load_array(data); %mudei de predictors para data
-
-% idx = ~isnan(predictors.J) & ~isnan(predictors.R_);
-% x_clean = predictors.J(idx);
-% y_clean = predictors.R_(idx);
-% 
-% corr_matrix = corr(x_clean, y_clean);
-% disp("CORRELACAO: ");
-% disp(corr_matrix);
-
-%for column = ["q1", "q2"]
-for column = ["q1", "q2", "q3", "r0"]
-    model = fitlm(predictors,targets.(column));
+function principal(flag, rep)
+    data = read_csv('data_4050.csv');
+    [predictors, targets] = load_array(data); % ?? changed predictors to data
     
-    disp(">>>> MODEL: " + column);
-    disp(model);
-
-    disp("> COEFFICIENTS: ");
-    disp(model.Coefficients.Estimate);               % Coeficientes [intercepto, b1, b2]
-    pred_values = predict(model, predictors);        % Predições
+    for column = ["q1", "q2", "q3", "r0"]
+        model = fitlm(predictors,targets.(column));
+        
+        disp(">>>> MODEL: " + column);
+        disp(model);
     
-    disp("> PREDICTED VALUES: ");
-    head(max(0.001, pred_values));
-    % predictors.(column) = max(0.001, pred_values);                % Alimentar independentes com a predição ou com a fonte
-    new.(column) = max(0.001, pred_values);                % Alimentar independentes com a predição ou com a fonte
-
-    disp("> ANOVA: ");
-    anova(model,'summary');
-end
-
-% Ackermann's gains
-Knom  = [-0.0013 , 0.0286];
-Kinom = 0.3982;
-
-% simulation vectors
-dt = 1e-6;
-t  = 0:dt:0.1;
-r  = ones(length(t),1);
-
-for i = 1:size(predictors.J)
-    [sys, A, B, C, D] = nominal_system(data, i);
-
-    % os valores de Q e R devem ser positivos
-    Q(1,1) = new.q1(i);
-    Q(2,2) = new.q2(i);
-    Q(3,3) = new.q3(i);
-    R0 = new.r0(i);
-    % disp("-----------------------<<<<<");
-    % disp(Q);
-
-    % 
-    [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
-    [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
-    [penalty] = penalty_control(u, data.D_(i)); %mudei de predictors para data
-    [a, b, c, d] = step_info(sys_mf);
-    [J] = cost_calculation(a, b, c, d, penalty);
-    % disp(J);
-    % plot_chart(predictors.q1(i), predictors.q2(i), predictors.q3(i), predictors.r0(i), sys, A, B, C, D, Knom, Kinom, r, t)
-    % if i == 10
-    %     break;
-    % end
+        disp("> COEFFICIENTS: ");
+        disp(model.Coefficients.Estimate);               % Coeficientes [intercepto, b1, b2]
+        pred_values = predict(model, predictors);        % Predições
+        
+        disp("> PREDICTED VALUES: ");
+        head(max(0.001, pred_values));
+        % predictors.(column) = max(0.001, pred_values);       % Alimentar independentes com a predição
+        new.(column) = max(0.001, pred_values);                % Guardar vetor com as predições
+    
+        disp("> ANOVA: ");
+        anova(model,'summary');
+    end
+    
+    % Ackermann's gains
+    Knom  = [-0.0013 , 0.0286];
+    Kinom = 0.3982;
+    
+    % simulation vectors
+    dt = 1e-6;
+    t  = 0:dt:0.1;
+    r  = ones(length(t),1);
+    
+    for i = 1:size(predictors.J)
+        [sys, A, B, C, D] = nominal_system(data, i);
+    
+        % os valores de Q e R devem ser positivos
+        Q(1,1) = new.q1(i);
+        Q(2,2) = new.q2(i);
+        Q(3,3) = new.q3(i);
+        R0 = new.r0(i);
+    
+        [Ks, K, Ki] = controller_gain_calculation(sys, Q, R0);
+        [u, sys_mf] = closedLoop_system(A, B, C, D, K, Ki, r, t);
+        [penalty] = penalty_control(u, data.D_(i)); % ?? changed predictors to data
+        [a, b, c, d] = step_info(sys_mf);
+        [J] = cost_calculation(a, b, c, d, penalty);
+        % disp(J);
+        if flag == true && i == rep
+            plot_chart(new.q1(i), new.q2(i), new.q3(i), new.r0(i), sys, A, B, C, D, Knom, Kinom, r, t)
+        end
+    end
 end
 
 
