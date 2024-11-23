@@ -1,7 +1,7 @@
 % Reinicia o sistema (limpa o workspace, fecha figuras e limpa o terminal)
 restart_system();  
 % Chama a função principal com parâmetros (flag=para gráficos, rep=para qtde)
-principal(false, 2);
+principal(true, 2);
 
 % ----------------------------------------------------------- %
 % FUNÇÃO PRINCIPAL
@@ -19,9 +19,10 @@ function principal(flag, rep)
     for column = ["q1", "q2", "q3", "r0"]
         %lrm_crossValidation(predictors, targets, column, new, data); %new, column, 
         new = lrm_simple(predictors, targets, column, new);
+        head(new.(column));
     end
-    
-    application_domain(predictors, data, new, flag, rep);
+
+    % application_domain(predictors, data, new, flag, rep);
     
 end
 
@@ -187,6 +188,7 @@ function application_domain(predictors, data, new, flag, rep)
         end
     end
 end
+
 
 % ----------------------------------------------------------- %
 % FUNÇÃO PARA VALIDAÇÃO CRUZADA (CROSS-VALIDATION)
