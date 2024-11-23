@@ -19,10 +19,11 @@ function principal(flag, rep)
     for column = ["q1", "q2", "q3", "r0"]
         %lrm_crossValidation(predictors, targets, column, new, data); %new, column, 
         new = lrm_simple(predictors, targets, column, new);
+        disp("Resultado: " + column);
         head(new.(column));
     end
 
-    % application_domain(predictors, data, new, flag, rep);
+    application_domain(predictors, data, new, flag, rep);
     
 end
 
@@ -139,8 +140,8 @@ function new = lrm_simple(predictors, targets, column, new)
     new.(column) = max(0.001, pred_values);
 
     % Exibe a análise de variância (ANOVA) do modelo
-    disp("> ANOVA: ");
-    anova(model, 'summary');
+    % disp("> ANOVA: ");
+    % anova(model, 'summary');
 
     %plot(model);
 end
